@@ -1,15 +1,21 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
+  forwardRef,
 } from "@nestjs/common";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { PrismaService } from "../database/prisma/prisma.service";
-import { hashSync } from "bcrypt";
+import { AuthService } from "../auth/auth.service";
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly dbService: PrismaService) {}
+  constructor(
+    @Inject(forwardRef(() => AuthService))
+    private readonly authService: AuthService,
+    private readonly dbService: PrismaService,
+  ) {}
 
   async create(createUserDto: CreateUserDto) {
     const existingUser = await this.findOne(createUserDto.email);
@@ -19,7 +25,7 @@ export class UsersService {
     const newUser = await this.dbService.users.create({
       data: {
         ...createUserDto,
-        password: hashSync(createUserDto.password, 12),
+        password: this.authService.hash(createUserDto.password),
       },
     });
     newUser.password = "";

@@ -4,11 +4,11 @@ import { PrismaService } from "../database/prisma/prisma.service";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { BadRequestException, ConflictException } from "@nestjs/common";
 import { Users } from "@prisma/client";
-import { hashSync } from "bcrypt";
+import { AuthService } from "../auth/auth.service";
 
-jest.mock("bcrypt", () => ({
-  hashSync: jest.fn(),
-}));
+const mockAuthService = {
+  hash: jest.fn(),
+};
 const mockPrismaService = {
   users: {
     create: jest.fn(),
@@ -24,6 +24,7 @@ describe("UsersService", () => {
       providers: [
         UsersService,
         { provide: PrismaService, useValue: mockPrismaService },
+        { provide: AuthService, useValue: mockAuthService },
       ],
     }).compile();
 
@@ -34,11 +35,7 @@ describe("UsersService", () => {
     jest.clearAllMocks();
   });
 
-  it("should be defined", () => {
-    expect(service).toBeDefined();
-  });
-
-  describe("create", () => {
+  describe("Create", () => {
     it("should throw an error if email is already in use", async () => {
       const existingUser = {
         name: "existing user name",
@@ -70,7 +67,7 @@ describe("UsersService", () => {
         password: "any_password",
       };
       const hashedPassword = "hashed_password";
-      (hashSync as jest.Mock).mockReturnValueOnce(hashedPassword);
+      mockAuthService.hash.mockReturnValueOnce(hashedPassword);
       mockPrismaService.users.create.mockResolvedValueOnce({
         name: "any user name",
         email: "any_user@mail.com",
@@ -82,7 +79,7 @@ describe("UsersService", () => {
       expect(mockPrismaService.users.create).toHaveBeenCalledWith({
         data: { ...createUserDto, password: hashedPassword },
       });
-      expect(hashSync).toHaveBeenCalledWith(createUserDto.password, 12);
+      expect(mockAuthService.hash).toHaveBeenCalledWith(createUserDto.password);
     });
 
     it("should create a new user", async () => {
@@ -98,7 +95,7 @@ describe("UsersService", () => {
       };
       mockPrismaService.users.create.mockResolvedValue(mockUser);
       const hashedPassword = "hashed_password";
-      (hashSync as jest.Mock).mockReturnValueOnce(hashedPassword);
+      mockAuthService.hash.mockReturnValueOnce(hashedPassword);
 
       await service.create(createUserDto);
 
@@ -123,7 +120,7 @@ describe("UsersService", () => {
     });
   });
 
-  describe("findOne", () => {
+  describe("FindOne", () => {
     it("should find an existing user by email", async () => {
       const existingUser = {
         name: "existing user name",
