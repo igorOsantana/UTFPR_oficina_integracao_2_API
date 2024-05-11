@@ -13,6 +13,14 @@ Before running this project, make sure you have Docker installed on your machine
 1. Create a `.env` file in the root directory of the project.
 2. Use the `.env.example` file as a template to fill in the required environment variables. Make sure to set appropriate values for variables like `PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, etc.
 
+## Testing
+
+To find the testing files, look for files named with `.spec`. You can run all automated tests by running:
+
+```bash
+npm run test
+```
+
 ## Usage
 
 To run the project, follow these steps:
