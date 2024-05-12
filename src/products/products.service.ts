@@ -28,6 +28,13 @@ export class ProductsService {
     return product;
   }
 
+  async findAll(name?: string) {
+    const products = await this.dbService.products.findMany({
+      where: { name: { contains: name } },
+    });
+    return products;
+  }
+
   async findOneByName(name: string) {
     const product = await this.dbService.products.findUnique({
       where: { name },
