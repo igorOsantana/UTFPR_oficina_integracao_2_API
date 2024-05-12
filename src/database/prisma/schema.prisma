@@ -14,7 +14,7 @@ model Users {
 }
 
 model Products {
-  id       String @default(uuid())
+  id       String @id @default(uuid())
   name     String @unique
   quantity Int
 }
