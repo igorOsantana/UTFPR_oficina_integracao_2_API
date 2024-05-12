@@ -8,6 +8,7 @@ import { CreateProductDto } from "./dto/create-product.dto";
 const mockPrismaService = {
   products: {
     create: jest.fn(),
+    findMany: jest.fn(),
     findUnique: jest.fn(),
     delete: jest.fn(),
   },
@@ -32,7 +33,7 @@ describe("ProductsService", () => {
   });
 
   describe("Create", () => {
-    it("should throw an error if name is already in use", async () => {
+    it("should throw conflict exception if name is already in use", async () => {
       const existingProduct = {
         id: "any-product-id",
         name: "any product name",
@@ -67,7 +68,7 @@ describe("ProductsService", () => {
         name: createProjectDto.name,
         quantity: 10,
       };
-      mockPrismaService.products.create.mockResolvedValue(mockProduct);
+      mockPrismaService.products.create.mockResolvedValueOnce(mockProduct);
 
       await service.create(createProjectDto);
 
@@ -77,25 +78,78 @@ describe("ProductsService", () => {
     });
   });
 
-  describe("FindOne", () => {
-    it("should find an existing product by id", async () => {
-      const existingProduct = {
-        id: "any-product-id",
-        name: "existing product name",
-        quantity: 30,
-      };
-      mockPrismaService.products.findUnique.mockResolvedValueOnce(
-        existingProduct,
-      );
+  describe("FindAll", () => {
+    it("should return an empty array if no product with the given name was found", async () => {
+      const givenName = "non-existing-name";
+      mockPrismaService.products.findMany.mockResolvedValueOnce([]);
 
-      const foundProduct = await service.findOne(existingProduct.id);
+      const products = await service.findAll(givenName);
 
-      expect(foundProduct).toEqual(existingProduct);
-      expect(mockPrismaService.products.findUnique).toHaveBeenCalledWith({
-        where: { id: existingProduct.id },
+      expect(products).toStrictEqual([]);
+      expect(mockPrismaService.products.findMany).toHaveBeenCalledWith({
+        where: { name: { contains: givenName } },
       });
     });
 
+    it("should return the found products filtered by the given name", async () => {
+      const mockProducts: Products[] = [
+        {
+          id: "any-product-id",
+          name: "any product name",
+          quantity: 3,
+        },
+        {
+          id: "any-product-id-2",
+          name: "any product name 2",
+          quantity: 6,
+        },
+      ];
+      mockPrismaService.products.findMany.mockResolvedValueOnce(mockProducts);
+      const givenName = "any product";
+
+      const response = await service.findAll(givenName);
+
+      expect(mockProducts.every((mp) => mp.name.includes(givenName))).toBe(
+        true,
+      );
+      expect(response).toEqual(mockProducts);
+      expect(mockPrismaService.products.findMany).toHaveBeenCalledWith({
+        where: { name: { contains: givenName } },
+      });
+    });
+
+    it("should return all products if name was not provided", async () => {
+      const mockAllProducts: Products[] = [
+        {
+          id: "any-product-id",
+          name: "any product name",
+          quantity: 3,
+        },
+        {
+          id: "any-product-id-2",
+          name: "any product name 2",
+          quantity: 6,
+        },
+        {
+          id: "any-product-id-3",
+          name: "any product name 3",
+          quantity: 9,
+        },
+      ];
+      mockPrismaService.products.findMany.mockResolvedValueOnce(
+        mockAllProducts,
+      );
+
+      const response = await service.findAll();
+
+      expect(response).toEqual(mockAllProducts);
+      expect(mockPrismaService.products.findMany).toHaveBeenCalledWith({
+        where: { name: { contains: undefined } },
+      });
+    });
+  });
+
+  describe("FindOne", () => {
     it("should return null if product with id does not exist", async () => {
       const nonExistingId = "non-existing-id";
       mockPrismaService.products.findUnique.mockResolvedValueOnce(null);
@@ -114,7 +168,7 @@ describe("ProductsService", () => {
         name: "any product name",
         quantity: 10,
       };
-      mockPrismaService.products.findUnique.mockResolvedValue(mockProduct);
+      mockPrismaService.products.findUnique.mockResolvedValueOnce(mockProduct);
 
       const response = await service.findOne(mockProduct.id);
 
@@ -126,24 +180,6 @@ describe("ProductsService", () => {
   });
 
   describe("FindOneByName", () => {
-    it("should find an existing product by name", async () => {
-      const existingProduct = {
-        id: "any-product-id",
-        name: "existing product name",
-        quantity: 50,
-      };
-      mockPrismaService.products.findUnique.mockResolvedValueOnce(
-        existingProduct,
-      );
-
-      const foundProduct = await service.findOneByName(existingProduct.name);
-
-      expect(foundProduct).toEqual(existingProduct);
-      expect(mockPrismaService.products.findUnique).toHaveBeenCalledWith({
-        where: { name: existingProduct.name },
-      });
-    });
-
     it("should return null if product with name does not exist", async () => {
       const nonExistingName = "non-existing-name";
       mockPrismaService.products.findUnique.mockResolvedValueOnce(null);
@@ -162,7 +198,7 @@ describe("ProductsService", () => {
         name: "any product name",
         quantity: 20,
       };
-      mockPrismaService.products.findUnique.mockResolvedValue(mockProduct);
+      mockPrismaService.products.findUnique.mockResolvedValueOnce(mockProduct);
 
       const response = await service.findOneByName(mockProduct.name);
 
@@ -174,8 +210,7 @@ describe("ProductsService", () => {
   });
 
   describe("Remove", () => {
-    it("should throw a not found exception if the product was not found", async () => {
-      mockPrismaService.products.findUnique.mockResolvedValueOnce(null);
+    it("should throw not found exception if the product was not found", async () => {
       const nonExistingId = "nonExistingId";
 
       const promise = service.remove(nonExistingId);
