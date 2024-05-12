@@ -34,9 +34,9 @@ To run the project, follow these steps:
 
 To find the testing files, look for files named with `.spec`. You can run all automated tests with details by running:
 
-    ```bash
-    npm run test
-    ```
+   ```bash
+   npm run test
+   ```
 
 ## Additional Information
 
